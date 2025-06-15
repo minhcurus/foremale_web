@@ -1,12 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
- reactStrictMode: true, // Optional, keep if you have it
+  reactStrictMode: true,
   async rewrites() {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     return [
       {
         source: '/api/:path*',
-        destination: 'https://spss.io.vn/api/:path*',
+        destination: `${apiBaseUrl}/:path*`,
       },
     ];
   },
