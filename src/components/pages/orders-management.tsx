@@ -1,12 +1,53 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { orders } from "@/lib/mock-data"
+import { useAuth } from "@/contexts/auth-context"
 import { getStatusBadge } from "@/lib/utils"
 import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
 
+interface Order {
+  id: string
+  user: string
+  products: number
+  total: number
+  status: "Delivered" | "Shipped" | "Processing" | "Cancelled"
+  date: string
+}
+
 export function OrdersManagement() {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { getToken } = useAuth()
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const token = getToken()
+        const response = await fetch("https://spss.io.vn/api/Order/all", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!response.ok) throw new Error("Failed to fetch orders")
+        const data = await response.json()
+        setOrders(data)
+      } catch (error) {
+        console.error("Error fetching orders:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchOrders()
+  }, [getToken])
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
   return (
     <Card>
       <CardHeader>

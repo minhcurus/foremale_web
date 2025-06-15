@@ -11,7 +11,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && (!user || user.role !== "1")) {
       router.push("/login")
     }
   }, [user, isLoading, router])
@@ -24,5 +24,5 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  return user ? <>{children}</> : null
+  return user && user.role === "1" ? <>{children}</> : null
 }

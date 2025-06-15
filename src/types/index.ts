@@ -1,29 +1,46 @@
 export interface User {
-  id: number
-  name: string
+  userId: number
+  fullName: string
   email: string
-  status: "Active" | "Inactive"
-  joinDate: string
-  orders: number
+  userName: string
+  phoneNumber: string
+  address: string
+  role: string
+  dateOfBirth: string
+  image_User: string | null
+  background_Image: string | null
+  description: string | null
+  premiumPackageId: number | null
+  premiumExpiryDate: string
 }
 
 export interface Product {
-  id: number
+  productId: string
   name: string
-  category: string
   price: number
-  stock: number
-  status: "Active" | "Out of Stock"
+  brand: string
+  color: string
+  imageURL: string
+  description: string
+  style: string
+  category: string
+  material: string
+  type: string
 }
 
 export interface Payment {
-  id: number
-  orderId: string
-  user: string
+  userId: number
   amount: number
-  status: "Pending" | "Completed" | "Failed" | "Processing"
-  method: string
-  date: string
+  description: string
+  returnUrl: string
+  buyerName: string
+  buyerEmail: string
+  buyerPhone: string
+  buyerAddress: string
+  method: number
+  orderId: string | null
+  transactionId: string | null
+  orderCode: number
 }
 
 export interface Order {
