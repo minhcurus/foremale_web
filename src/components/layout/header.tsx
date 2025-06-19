@@ -16,6 +16,8 @@ import Image from "next/image"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 
+const DEFAULT_AVATAR = "https://res.cloudinary.com/dcp4zu4bs/image/upload/v1750261362/products/ovnrfcrb4wjrd8p92sdd.jpg"
+
 interface HeaderProps {
   activeTab: TabType
   sidebarOpen: boolean
@@ -30,7 +32,7 @@ export function Header({ activeTab, sidebarOpen, setSidebarOpen }: HeaderProps) 
     logout()
     router.push("/login")
   }
-
+const userImage = user?.imageUser || DEFAULT_AVATAR
   return (
     <header className="bg-white shadow-sm border-b">
       <div className="flex items-center justify-between px-6 py-4">
@@ -52,7 +54,7 @@ export function Header({ activeTab, sidebarOpen, setSidebarOpen }: HeaderProps) 
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Image
-                  src="/placeholder.svg?height=32&width=32"
+                  src={userImage}
                   alt={user?.userName || "Admin"}
                   width={32}
                   height={32}
