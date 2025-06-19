@@ -1,7 +1,6 @@
-
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -10,6 +9,7 @@ import { useUser } from "@/contexts/user-context"
 import { getStatusBadge } from "@/lib/utils"
 import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface User {
   userId: number
@@ -19,8 +19,9 @@ interface User {
   phoneNumber: string
   address: string
   dateOfBirth: string
-  image_User: string | null
-  background_Image: string | null
+  status: boolean
+  imageUser: string | null
+  imageBackground: string | null
   description: string | null
   premiumPackageId: number | null
   premiumExpiryDate: string
@@ -31,19 +32,50 @@ export function UsersManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [editUser, setEditUser] = useState<User | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const action = searchParams.get("action")
+    const id = searchParams.get("id")
+    if (!selectedUser && !editUser && !deleteId) {
+      if (action === "view" && id) {
+        handleView(Number(id))
+      } else if (action === "edit" && id) {
+        handleEdit(Number(id))
+      } else if (action === "delete" && id) {
+        handleDeleteConfirm(Number(id))
+      }
+    }
+  }, [searchParams])
 
   const handleView = async (id: number) => {
     const user = await fetchUserProfile(id)
-    setSelectedUser(user)
+    setSelectedUser(user || null)
+    const newSearchParams = new URLSearchParams(searchParams)
+    newSearchParams.set("tab", "users")
+    newSearchParams.set("action", "view")
+    newSearchParams.set("id", id.toString())
+    router.push(`/?${newSearchParams.toString()}`)
   }
 
   const handleEdit = async (id: number) => {
     const user = await fetchUserProfile(id)
     if (user) setEditUser(user)
+    const newSearchParams = new URLSearchParams(searchParams)
+    newSearchParams.set("tab", "users")
+    newSearchParams.set("action", "edit")
+    newSearchParams.set("id", id.toString())
+    router.push(`/?${newSearchParams.toString()}`)
   }
 
   const handleDeleteConfirm = (id: number) => {
     setDeleteId(id)
+    const newSearchParams = new URLSearchParams(searchParams)
+    newSearchParams.set("tab", "users")
+    newSearchParams.set("action", "delete")
+    newSearchParams.set("id", id.toString())
+    router.push(`/?${newSearchParams.toString()}`)
   }
 
   const handleDelete = async () => {
@@ -51,6 +83,9 @@ export function UsersManagement() {
       const success = await deleteUser(deleteId)
       if (success) {
         setDeleteId(null)
+        const newSearchParams = new URLSearchParams()
+        newSearchParams.set("tab", "users")
+        router.replace(`/?${newSearchParams.toString()}`)
         console.log("User deleted successfully")
       }
     }
@@ -71,9 +106,21 @@ export function UsersManagement() {
       const success = await updateUserProfile(editUser.userId, updatedData)
       if (success) {
         setEditUser(null)
+        const newSearchParams = new URLSearchParams()
+        newSearchParams.set("tab", "users")
+        router.replace(`/?${newSearchParams.toString()}`)
         console.log("User updated successfully")
       }
     }
+  }
+
+  const handleClose = () => {
+    setSelectedUser(null)
+    setEditUser(null)
+    setDeleteId(null)
+    const newSearchParams = new URLSearchParams()
+    newSearchParams.set("tab", "users")
+    router.replace(`/?${newSearchParams.toString()}`)
   }
 
   if (loading) return <div>Loading...</div>
@@ -92,7 +139,7 @@ export function UsersManagement() {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Birth Date</TableHead>
+              <TableHead>Payment Status</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -103,7 +150,7 @@ export function UsersManagement() {
                 <TableCell className="font-medium">{user.fullName}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadge(user.premiumPackageId ? "Active" : "Inactive", "user")}>
+                  <Badge variant={getStatusBadge(user.status ? "Active" : "Inactive", "user")}>
                     {user.premiumPackageId ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
@@ -152,7 +199,7 @@ export function UsersManagement() {
                 <p><strong>Status:</strong> {selectedUser.premiumPackageId ? "Active" : "Inactive"}</p>
                 <p><strong>Description:</strong> {selectedUser.description || "N/A"}</p>
               </div>
-              <Button className="mt-4" onClick={() => setSelectedUser(null)}>Close</Button>
+              <Button className="mt-4" onClick={handleClose}>Close</Button>
             </div>
           </div>
         )}
@@ -211,7 +258,7 @@ export function UsersManagement() {
                   placeholder="Description"
                 />
                 <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
                   <Button type="submit">Save</Button>
                 </div>
               </form>
@@ -226,7 +273,7 @@ export function UsersManagement() {
               <h2 className="text-xl font-bold mb-4">Confirm Delete</h2>
               <p>Are you sure you want to delete this user? This action cannot be undone.</p>
               <div className="mt-4 flex justify-center space-x-2">
-                <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+                <Button variant="outline" onClick={handleClose}>Cancel</Button>
                 <Button variant="destructive" onClick={handleDelete}>Delete</Button>
               </div>
             </div>

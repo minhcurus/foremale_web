@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button"
 import type { TabType } from "@/types"
 import { Home, CreditCard, Package, ShoppingCart, Users, Settings } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect } from "react"
 
 interface SidebarProps {
   activeTab: TabType
@@ -11,6 +13,30 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Sync activeTab with the 'tab' query parameter on mount or change
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab") as TabType | null
+    if (tabFromUrl && tabFromUrl !== activeTab && isValidTab(tabFromUrl)) {
+      setActiveTab(tabFromUrl)
+    }
+  }, [searchParams, setActiveTab])
+
+  // Validate tab to ensure it's a valid TabType
+  const isValidTab = (tab: string): tab is TabType => {
+    return ["overview", "users", "products", "payments", "orders", "settings"].includes(tab)
+  }
+
+  // Handle tab click and update URL with query parameter
+  const handleTabClick = (tab: TabType) => {
+    setActiveTab(tab)
+    const newSearchParams = new URLSearchParams(searchParams)
+    newSearchParams.set("tab", tab)
+    router.push(`/?${newSearchParams.toString()}`)
+  }
+
   const menuItems = [
     { id: "overview" as TabType, label: "Overview", icon: Home },
     { id: "users" as TabType, label: "Users", icon: Users },
@@ -34,7 +60,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
                 key={item.id}
                 variant={activeTab === item.id ? "default" : "ghost"}
                 className="w-full justify-start"
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleTabClick(item.id)}
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {item.label}

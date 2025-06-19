@@ -53,7 +53,7 @@ export function Header({ activeTab, sidebarOpen, setSidebarOpen }: HeaderProps) 
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Image
                   src="/placeholder.svg?height=32&width=32"
-                  alt={user?.name || "Admin"}
+                  alt={user?.userName || "Admin"}
                   width={32}
                   height={32}
                   className="rounded-full"
@@ -61,7 +61,7 @@ export function Header({ activeTab, sidebarOpen, setSidebarOpen }: HeaderProps) 
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel>{user?.name || "Admin Account"}</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.userName || "Admin Account"}</DropdownMenuLabel>
               <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user?.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Profile</DropdownMenuItem>

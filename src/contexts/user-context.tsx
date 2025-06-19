@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { User } from "@/types"; // Import User interface from index.ts
+import { useAuth } from "./auth-context";
 
 interface UserContextType {
   users: User[];
@@ -18,16 +19,21 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { getToken, user, isLoading: authLoading } = useAuth();
 
   const fetchUsers = async (): Promise<boolean> => {
     console.log("Fetching users...");
     setLoading(true);
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = getToken();
+      if (!token) {
+        throw new Error("No JWT token found");
+      }
       console.log("Fetching users with token:", token);
       const response = await fetch("/api/User", {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -41,8 +47,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUsers(data);
       setError(null);
       return true;
-    } catch (err) {
-      setError("Error fetching users");
+    } catch (err: any) {
+      setError("Error fetching users: " + err.message);
       console.error("Error fetching users:", err);
       return false;
     } finally {
@@ -98,8 +104,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       formData.append("PhoneNumber", userData.phoneNumber || "");
       formData.append("Address", userData.address || "");
       formData.append("DateOfBirth", userData.dateOfBirth || "");
-      if (userData.image_User) formData.append("Image_User", userData.image_User as File);
-      if (userData.background_Image) formData.append("Background_Image", userData.background_Image as File);
+      if (userData.imageUser) formData.append("Image_User", userData.imageUser as File);
+      if (userData.imageBackground) formData.append("imageBackground", userData.imageBackground as File);
       formData.append("Description", userData.description || "");
 
       const response = await fetch(`/api/User/update-profile?id=${id}`, {
@@ -166,8 +172,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (user && !authLoading) {
+      fetchUsers();
+    } else {
+      setLoading(false); // Ensure loading is false if no fetch is attempted
+    }
+  }, [user, authLoading]);
 
   return (
     <UserContext.Provider value={{ users, loading, error, fetchUsers, fetchUserProfile, updateUserProfile, deleteUser }}>

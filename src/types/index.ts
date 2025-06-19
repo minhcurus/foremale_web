@@ -6,12 +6,12 @@ export interface User {
   phoneNumber: string
   address: string
   role: string
+  premiumPackageId: number
+  status: boolean
   dateOfBirth: string
-  image_User: string | null
-  background_Image: string | null
+  imageUser: string | null
+  imageBackground: string | null
   description: string | null
-  premiumPackageId: number | null
-  premiumExpiryDate: string
 }
 
 export interface Product {

@@ -49,18 +49,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Cleanup event listener
     return () => window.removeEventListener("popstate", handlePopState)
   }, [token, pathname, router])
-
+  
   const fetchUserData = async (jwt: string): Promise<boolean> => {
     console.log("Fetching user data with JWT:", jwt);
     setIsLoading(true);
     try {
-      const response = await fetch('/api/User/GetCurrentUser', {
-        method: 'POST',
+      const response = await fetch('/api/User/user-profile', {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token: jwt }),
       });
       console.log("Fetch response status:", response.status);
       if (!response.ok) {
@@ -76,13 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userName: data.data.userName,
           phoneNumber: data.data.phoneNumber,
           address: data.data.address,
-          role:data.data.role,
+          role: data.data.role,
           dateOfBirth: data.data.dateOfBirth,
-          image_User: data.data.image_User,
-          background_Image: data.data.background_Image,
-          description: data.data.description,
-          premiumPackageId: data.data.premiumPackageId,
-          premiumExpiryDate: data.data.premiumExpiryDate,
+          imageUser: data.data.imageUser, // Adjusted to match API response
+          imageBackground: data.data.imageBackground, // Adjusted to match API response
+          description: data.data.description
         });
         console.log("User set to:", {
           email: data.data.email,
@@ -101,7 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("Failed to fetch user data:", error);
-      logout();
+      if (response.status === 401) {
+        logout(); // Logout only on unauthorized
+      }
       return false;
     } finally {
       setIsLoading(false);
