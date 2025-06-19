@@ -29,9 +29,18 @@ import { usePayment } from "@/contexts/payment-context";
 import { getStatusBadge } from "@/lib/utils";
 import { Eye, AlertCircle } from "lucide-react";
 
-
 export function PaymentsOversight() {
   const { payments, isLoading, error, updatePaymentStatus } = usePayment();
+
+  // Helper function to format amount consistently
+  const formatAmount = (amount: number) => {
+    if (typeof window === 'undefined') {
+      // Server-side: Use a fixed format to avoid locale mismatches
+      return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VND';
+    }
+    // Client-side: Use locale formatting
+    return amount.toLocaleString('vi-VN') + ' VND';
+  };
 
   if (isLoading) {
     return (
@@ -79,7 +88,7 @@ export function PaymentsOversight() {
                     {payment.orderCode}
                   </TableCell>
                   <TableCell>{payment.buyerName || "Unknown"}</TableCell>
-                  <TableCell>${(payment.amount / 1000).toFixed(2)}</TableCell>
+                  <TableCell>{formatAmount(payment.amount)}</TableCell>
                   <TableCell>
                     {payment.method === 0
                       ? "Unknown"

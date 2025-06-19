@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { User } from "@/types"; // Import User interface from index.ts
+import { User } from "@/types";
 import { useAuth } from "./auth-context";
 
 interface UserContextType {
@@ -61,7 +61,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     console.log(`Fetching user profile for id ${id}...`);
     setLoading(true);
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = getToken();
+      if (!token) {
+        throw new Error("No JWT token found");
+      }
       console.log("Fetching user profile with token:", token);
       const response = await fetch(`/api/User/user-profile?id=${id}`, {
         method: "POST",
@@ -94,7 +97,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     console.log(`Updating user profile for id ${id}...`);
     setLoading(true);
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = getToken();
+      if (!token) {
+        throw new Error("No JWT token found");
+      }
       console.log("Updating user profile with token:", token);
       const formData = new FormData();
       formData.append("UserId", id.toString());
@@ -141,7 +147,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     console.log(`Deleting user with id ${id}...`);
     setLoading(true);
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = getToken();
+      if (!token) {
+        throw new Error("No JWT token found");
+      }
       console.log("Deleting user with token:", token);
       const response = await fetch(`/api/User/delete-user?id=${id}`, {
         method: "DELETE",
@@ -175,7 +184,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (user && !authLoading) {
       fetchUsers();
     } else {
-      setLoading(false); // Ensure loading is false if no fetch is attempted
+      setLoading(false);
     }
   }, [user, authLoading]);
 
