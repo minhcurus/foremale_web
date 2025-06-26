@@ -11,8 +11,9 @@ interface UserContextType {
   error: string | null;
   fetchUsers: () => Promise<boolean>;
   fetchUserProfile: (id: number) => Promise<User | null>;
-  updateUserProfile: (id: number, userData: Partial<User>) => Promise<boolean>;
   deleteUser: (id: number) => Promise<boolean>;
+  banUser: (id: number) => Promise<boolean>;
+  unbanUser: (id: number) => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -93,56 +94,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateUserProfile = async (id: number, userData: Partial<User>): Promise<boolean> => {
-    console.log(`Updating user profile for id ${id}...`);
-    setLoading(true);
-    try {
-      const token = getToken();
-      if (!token) {
-        throw new Error("No JWT token found");
-      }
-      console.log("Updating user profile with token:", token);
-      const formData = new FormData();
-      formData.append("UserId", id.toString());
-      formData.append("FullName", userData.fullName || "");
-      formData.append("Email", userData.email || "");
-      formData.append("UserName", userData.userName || "");
-      formData.append("PhoneNumber", userData.phoneNumber || "");
-      formData.append("Address", userData.address || "");
-      formData.append("DateOfBirth", userData.dateOfBirth || "");
-      if (userData.imageUser) formData.append("Image_User", userData.imageUser as File);
-      if (userData.imageBackground) formData.append("imageBackground", userData.imageBackground as File);
-      formData.append("Description", userData.description || "");
-
-      const response = await fetch(`/api/User/update-profile?id=${id}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      console.log("Update user profile response status:", response.status);
-      if (!response.ok) {
-        throw new Error(`Failed to update user profile: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log("Update user profile response data:", data);
-      if (data.success) {
-        await fetchUsers();
-        setError(null);
-        return true;
-      }
-      return false;
-    } catch (err) {
-      setError("Error updating user profile");
-      console.error("Error updating user profile:", err);
-      return false;
-    } finally {
-      setLoading(false);
-      console.log("Update user profile completed, isLoading set to false");
-    }
-  };
-
   const deleteUser = async (id: number): Promise<boolean> => {
     console.log(`Deleting user with id ${id}...`);
     setLoading(true);
@@ -179,6 +130,56 @@ export function UserProvider({ children }: { children: ReactNode }) {
       console.log("Delete user completed, isLoading set to false");
     }
   };
+  const banUser = async (id: number): Promise<boolean> => {
+    console.log(`Banning user with id ${id}...`);
+    try {
+      const token = getToken();
+      if (!token) throw new Error("No JWT token found");
+      
+      const response = await fetch(`/api/User/Ban-user?id=${id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ban user: ${response.status}`);
+      }
+
+      await fetchUsers(); // Tải lại danh sách user sau khi thành công
+      return true;
+    } catch (err: any) {
+      console.error("Error banning user:", err);
+      // Bạn có thể thêm state để hiển thị lỗi này ra UI
+      alert(`Error banning user: ${err.message}`);
+      return false;
+    }
+  };
+
+  // HÀM MỚI: Để gỡ cấm người dùng
+  const unbanUser = async (id: number): Promise<boolean> => {
+    console.log(`Unbanning user with id ${id}...`);
+    try {
+      const token = getToken();
+      if (!token) throw new Error("No JWT token found");
+      
+      const response = await fetch(`/api/User/UnBan-user?id=${id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to unban user: ${response.status}`);
+      }
+
+      await fetchUsers(); // Tải lại danh sách user sau khi thành công
+      return true;
+    } catch (err: any) {
+      console.error("Error unbanning user:", err);
+      alert(`Error unbanning user: ${err.message}`);
+      return false;
+    }
+  };
+
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -189,7 +190,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [user, authLoading]);
 
   return (
-    <UserContext.Provider value={{ users, loading, error, fetchUsers, fetchUserProfile, updateUserProfile, deleteUser }}>
+    <UserContext.Provider value={{ users, loading, error, fetchUsers, fetchUserProfile, deleteUser, banUser, unbanUser }}>
       {children}
     </UserContext.Provider>
   );
