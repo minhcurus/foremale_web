@@ -1,21 +1,14 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useMemo } from "react"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -23,116 +16,146 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { usePayment } from "@/contexts/payment-context";
-import { getStatusBadge } from "@/lib/utils";
-import { Eye, AlertCircle } from "lucide-react";
+} from "@/components/ui/table"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { usePayment } from "@/contexts/payment-context"
+import { getStatusBadge } from "@/lib/utils"
+import { Eye, AlertCircle, RefreshCw, Loader2 } from "lucide-react"
+import { PaymentDetailModal } from "../payments/payment-detail-modal"
+import { Payment } from "@/types"
+
+// Hàm ánh xạ trạng thái từ số sang chuỗi
+const mapStatusNumberToString = (statusNumber: number): string => {
+    switch (statusNumber) {
+        case 0: return "Pending";
+        case 1: return "Completed";
+        // Thêm các trạng thái khác nếu có
+        default: return "Unknown";
+    }
+};
 
 export function PaymentsOversight() {
-  const { payments, isLoading, error, updatePaymentStatus } = usePayment();
+  const { payments, isLoading, error, confirmPremiumPayment, checkLivePaymentStatus } = usePayment();
+  
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // State để quản lý trạng thái loading của từng dòng
+  const [loadingStates, setLoadingStates] = useState<{ [orderCode: number]: { checking?: boolean; confirming?: boolean } }>({});
 
-  // Helper function to format amount consistently
-  const formatAmount = (amount: number) => {
-    if (typeof window === 'undefined') {
-      // Server-side: Use a fixed format to avoid locale mismatches
-      return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VND';
+  // Chỉ hiển thị các giao dịch là gói Premium
+  const premiumPayments = useMemo(() => {
+    return payments.filter(p => p.premiumPackageId !== null);
+  }, [payments]);
+
+  const handleViewDetails = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setIsModalOpen(true);
+  }
+
+  // HÀM MỚI: Xử lý việc kiểm tra trạng thái trực tiếp
+  const handleCheckStatus = async (orderCode: number) => {
+    setLoadingStates(prev => ({ ...prev, [orderCode]: { ...prev[orderCode], checking: true } }));
+    const liveStatus = await checkLivePaymentStatus(orderCode);
+    if (liveStatus) {
+      alert(`Live Status for Order #${orderCode}: ${liveStatus}`);
     }
-    // Client-side: Use locale formatting
-    return amount.toLocaleString('vi-VN') + ' VND';
+    setLoadingStates(prev => ({ ...prev, [orderCode]: { ...prev[orderCode], checking: false } }));
+  };
+
+  // HÀM MỚI: Xử lý việc xác nhận thanh toán
+  const handleConfirmPayment = async (orderCode: number) => {
+    setLoadingStates(prev => ({ ...prev, [orderCode]: { ...prev[orderCode], confirming: true } }));
+    await confirmPremiumPayment(orderCode);
+    setLoadingStates(prev => ({ ...prev, [orderCode]: { ...prev[orderCode], confirming: false } }));
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
-    );
+    )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Payment Oversight</CardTitle>
-        <CardDescription>
-          Monitor and manage payment transactions
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {payments.length === 0 && !error ? (
-          <div className="text-center py-4">No payments found.</div>
-        ) : (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Premium Package Payments</CardTitle>
+          <CardDescription>
+            Confirm and manage premium package payment transactions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" /> <AlertTitle>Error</AlertTitle> <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Order Code</TableHead>
                 <TableHead>Buyer</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {payments.map((payment) => (
-                <TableRow key={payment.transactionId || payment.orderCode}>
-                  <TableCell className="font-medium">
-                    {payment.orderCode}
-                  </TableCell>
-                  <TableCell>{payment.buyerName || "Unknown"}</TableCell>
-                  <TableCell>{formatAmount(payment.amount)}</TableCell>
-                  <TableCell>
-                    {payment.method === 0
-                      ? "Unknown"
-                      : payment.method === 2
-                      ? "Online Payment"
-                      : `Method ${payment.method}`}
-                  </TableCell>
-                  <TableCell>{payment.description}</TableCell>
-                  <TableCell>
-                    {getStatusBadge(payment.status || "Pending", "payment")}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Select
-                        value={payment.status || "Pending"}
-                        onValueChange={(value) =>
-                          updatePaymentStatus(
-                            payment.transactionId ||
-                              payment.orderCode.toString(),
-                            value
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Processing">Processing</SelectItem>
-                          <SelectItem value="Completed">Completed</SelectItem>
-                          <SelectItem value="Failed">Failed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+              {premiumPayments.length > 0 ? (
+                premiumPayments.map((payment) => {
+                  const statusString = mapStatusNumberToString(payment.status);
+                  const { checking, confirming } = loadingStates[payment.orderCode] || {};
+
+                  return (
+                    <TableRow key={payment.orderCode}>
+                      <TableCell className="font-medium">{payment.orderCode}</TableCell>
+                      <TableCell>{payment.buyerName}</TableCell>
+                      <TableCell>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(payment.amount)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                           <Badge variant={getStatusBadge(statusString, "payment")}>{statusString}</Badge>
+                           <Button variant="ghost" size="icon" onClick={() => handleCheckStatus(payment.orderCode)} disabled={checking}>
+                             {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                           </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          {/* Nút xác nhận chỉ hiển thị cho trạng thái "Pending" (status = 0) */}
+                          {payment.status === 0 && (
+                            <Button onClick={() => handleConfirmPayment(payment.orderCode)} disabled={confirming} size="sm">
+                              {confirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              Confirm
+                            </Button>
+                          )}
+                          <Button variant="outline" size="icon" onClick={() => handleViewDetails(payment)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">No premium payments found.</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+
+      <PaymentDetailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        payment={selectedPayment}
+      />
+    </>
+  )
 }

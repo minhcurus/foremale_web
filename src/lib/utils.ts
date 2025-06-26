@@ -31,3 +31,19 @@ export const getStatusBadge = (status: string, type: "user" | "product" | "payme
 
   return variants[type][status] as any
 }
+export const mapOrderStatus = (status: number) => {
+  switch (status) {
+    case 0:
+      return { text: "Processing", variant: "outline" as const };
+    case 1:
+      // Giả định status 1 là 'Completed' hoặc 'Delivered'
+      return { text: "Completed", variant: "success" as const };
+    case 2:
+       // Giả định status 2 là 'Shipped'
+       return { text: "Shipped", variant: "secondary" as const };
+    case 3:
+      return { text: "Cancelled", variant: "destructive" as const };
+    default:
+      return { text: "Unknown", variant: "default" as const };
+  }
+};

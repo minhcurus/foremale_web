@@ -1,65 +1,51 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useOrder } from "@/contexts/order-context" // SỬA: Import hook mới
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useAuth } from "@/contexts/auth-context"
-import { getStatusBadge } from "@/lib/utils"
-import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
-
-interface Order {
-  id: string
-  user: string
-  products: number
-  total: number
-  status: "Delivered" | "Shipped" | "Processing" | "Cancelled"
-  date: string
-}
+import { Badge } from "@/components/ui/badge"
+import { mapOrderStatus } from "@/lib/utils"
+import { MoreHorizontal, Eye, Edit, Trash2, Loader2 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export function OrdersManagement() {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { getToken } = useAuth()
+  // SỬA: Lấy dữ liệu từ context, không cần state và useEffect cục bộ nữa
+  const { orders, isLoading, error } = useOrder();
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const token = getToken()
-        const response = await fetch("https://spss.io.vn/api/Order/all", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        if (!response.ok) throw new Error("Failed to fetch orders")
-        const data = await response.json()
-        setOrders(data)
-      } catch (error) {
-        console.error("Error fetching orders:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchOrders()
-  }, [getToken])
+  // XÓA BỎ: useState và useEffect để fetch dữ liệu ở đây
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return (
+        <div className="flex min-h-[50vh] items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Order Management</CardTitle>
-        <CardDescription>Monitor and manage customer orders</CardDescription>
+        <CardDescription>Monitor and manage customer clothing orders</CardDescription>
       </CardHeader>
       <CardContent>
+        {/* THÊM: Hiển thị lỗi nếu có */}
+        {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Order ID</TableHead>
-              <TableHead>User</TableHead>
+              <TableHead>User ID</TableHead>
               <TableHead>Products</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Status</TableHead>
@@ -68,39 +54,54 @@ export function OrdersManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.user}</TableCell>
-                <TableCell>{order.products}</TableCell>
-                <TableCell>${order.total}</TableCell>
-                <TableCell>{getStatusBadge(order.status, "order")}</TableCell>
-                <TableCell>{order.date}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Update Status
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Cancel Order
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            {orders.length > 0 ? (
+                orders.map((order) => {
+                    const statusInfo = mapOrderStatus(order.status);
+                    const totalProducts = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+                    return (
+                        <TableRow key={order.orderId}>
+                        <TableCell className="font-medium">{order.orderId}</TableCell>
+                        <TableCell>User #{order.userId}</TableCell>
+                        <TableCell>{totalProducts}</TableCell>
+                        <TableCell>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalPrice)}</TableCell>
+                        <TableCell>
+                            <Badge variant={statusInfo.variant}>{statusInfo.text}</Badge>
+                        </TableCell>
+                        <TableCell>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</TableCell>
+                        <TableCell>
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Update Status
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-600">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Cancel Order
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    );
+                })
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                        No orders found.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>

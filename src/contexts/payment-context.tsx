@@ -1,147 +1,149 @@
+"use client";
 
-"use client"
-
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import type { ReactNode } from "react"
-
-interface Payment {
-  userId: number
-  amount: number
-  description: string
-  returnUrl: string
-  buyerName: string
-  buyerEmail: string
-  buyerPhone: string
-  buyerAddress: string
-  method: number
-  orderId: string | null
-  transactionId: string | null
-  orderCode: number
-}
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { Payment } from "@/types";
+import { useAuth } from "./auth-context"; // Đã có sẵn
 
 interface PaymentContextType {
-  payments: Payment[]
-  isLoading: boolean
-  error: string | null
-  fetchPayments: () => Promise<void>
-  updatePaymentStatus: (transactionId: string, newStatus: string) => Promise<boolean>
+  payments: Payment[];
+  isLoading: boolean;
+  error: string | null;
+  fetchPayments: () => void;
+  confirmPremiumPayment: (orderCode: number) => Promise<boolean>;
+  checkLivePaymentStatus: (orderCode: number) => Promise<string | null>;
 }
 
-const PaymentContext = createContext<PaymentContextType | undefined>(undefined)
+const PaymentContext = createContext<PaymentContextType | undefined>(undefined);
 
-export function PaymentProvider({ children }: { children: ReactNode }) {
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { getToken, isLoading: authLoading, user } = useAuth()
+export const PaymentProvider = ({ children }: { children: ReactNode }) => {
+  // THAY ĐỔI 1: Lấy thêm isLoading và user từ useAuth.
+  // Đổi tên isLoading thành authLoading để tránh trùng lặp.
+  const { getToken, isLoading: authLoading, user } = useAuth();
+  
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const API_BASE_URL = "/api"; // Sử dụng base URL để dễ quản lý
 
   const fetchPayments = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
+    // Không cần gọi setIsLoading(true) ở đây nữa vì useEffect sẽ quản lý
+    const token = getToken();
+    if (!token) {
+        // Lỗi này sẽ được xử lý bởi useEffect, không nên throw ở đây
+        setError("Authorization token not available.");
+        setIsLoading(false);
+        return;
+    }
+    
+    setError(null);
     try {
-      const token = getToken()
-      if (!token) {
-        throw new Error("No authentication token available. Please log in.")
-      }
-
-      console.log("Fetching payments with token:", token); // Debug token
-      const response = await fetch("/api/Payment/getpayment", {
+      const response = await fetch(`${API_BASE_URL}/Payment/getpayment`, { // Thêm /Payment
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-      })
+      });
 
-      console.log("API response status:", response.status); // Debug response
       if (!response.ok) {
-        if (response.status === 204) {
-          throw new Error("No payment data returned from the server. Please check the API endpoint.")
-        } else if (response.status === 404) {
-          throw new Error("Payment API endpoint not found. Please verify the API base URL.")
-        } else if (response.status === 401) {
-          throw new Error("Unauthorized request. Please check your authentication token.")
-        }
-        throw new Error(`Failed to fetch payments: ${response.status} ${response.statusText}`)
+        throw new Error(`Failed to fetch payments: ${response.status} ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      setPayments(data);
 
-      const data = await response.json()
-      console.log("API response data:", data); // Debug data
-      if (!Array.isArray(data)) {
-        throw new Error("Invalid payment data format received from the server.")
-      }
-      setPayments(data)
-    } catch (err) {
-      const errorMessage =
-        err instanceof TypeError && err.message.includes("NetworkError")
-          ? "Network error: Unable to reach the payment API. Please ensure the API server is accessible and configured correctly."
-          : err instanceof Error
-          ? err.message
-          : "An unexpected error occurred while fetching payments."
-      setError(errorMessage)
-      console.error("Error fetching payments:", err)
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch payments.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false); // Chỉ tắt loading khi fetch xong
     }
-  }, [getToken])
+  }, [getToken]); // SỬA LỖI: Thêm getToken vào dependency array
 
-  const updatePaymentStatus = async (transactionId: string, newStatus: string): Promise<boolean> => {
+  // THAY ĐỔI 2: Cập nhật useEffect để chờ AuthContext
+  useEffect(() => {
+    // Chỉ fetch payments khi auth không còn loading VÀ user đã tồn tại (đã đăng nhập)
+    if (!authLoading && user) {
+      setIsLoading(true); // Bật loading của PaymentContext trước khi fetch
+      fetchPayments();
+    } else if (!authLoading && !user) {
+      // Nếu auth xong mà không có user, dừng loading và không làm gì cả
+      setIsLoading(false);
+      setError("User not authenticated.");
+    }
+    // Nếu authLoading là true, chúng ta chỉ cần đợi.
+  }, [authLoading, user, fetchPayments]); // Dependencies để trigger lại khi auth thay đổi
+
+  const confirmPremiumPayment = async (orderCode: number): Promise<boolean> => {
     try {
-      const token = getToken()
-      if (!token) {
-        throw new Error("No authentication token available. Please log in.")
-      }
+      const token = getToken();
+      if (!token) throw new Error("Authorization token not found.");
 
-      const response = await fetch(`/api/Payment/update-status/${transactionId}`, {
-        method: "PATCH",
+      const response = await fetch(`${API_BASE_URL}/Payment/confirm-premium-payment`, { // Thêm /Payment
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: newStatus }),
-      })
+        body: JSON.stringify({ orderCode }),
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to update payment status: ${response.status} ${response.statusText}`)
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to confirm payment: ${response.status}`);
       }
+      
+      const result = await response.json();
+      alert(result.message);
+      fetchPayments();
+      return true;
 
-      setPayments((prevPayments) =>
-        prevPayments.map((payment) =>
-          (payment.transactionId || payment.orderCode.toString()) === transactionId
-            ? { ...payment, status: newStatus }
-            : payment
-        )
-      )
-      return true
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred while updating payment status."
-      setError(errorMessage)
-      console.error("Error updating payment status:", err)
-      return false
+    } catch (err: any) {
+      console.error("Failed to confirm payment:", err);
+      alert(`Error: ${err.message}`);
+      return false;
     }
-  }
+  };
 
-  useEffect(() => {
-    if (!authLoading && user && getToken()) {
-      fetchPayments()
-    } else if (!authLoading) {
-      setIsLoading(false)
-      setError("Authentication required to fetch payments.")
+  const checkLivePaymentStatus = async (orderCode: number): Promise<string | null> => {
+    try {
+        const token = getToken();
+        if (!token) throw new Error("Authorization token not found.");
+
+        const params = new URLSearchParams({ orderCode: orderCode.toString() });
+        const urlWithParams = `${API_BASE_URL}/Payment/check-payment-status?${params.toString()}`; // Thêm /Payment
+
+        const response = await fetch(urlWithParams, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to check status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.status;
+    } catch (err: any) {
+        console.error("Failed to check payment status:", err);
+        alert(`Error checking status: ${err.message}`);
+        return null;
     }
-  }, [authLoading, user, getToken, fetchPayments])
+  };
 
   return (
-    <PaymentContext.Provider value={{ payments, isLoading, error, fetchPayments, updatePaymentStatus }}>
+    <PaymentContext.Provider value={{ payments, isLoading, error, fetchPayments, confirmPremiumPayment, checkLivePaymentStatus }}>
       {children}
     </PaymentContext.Provider>
-  )
-}
+  );
+};
 
-export function usePayment() {
-  const context = useContext(PaymentContext)
-  if (!context) {
-    throw new Error("usePayment must be used within a PaymentProvider")
+export const usePayment = () => {
+  const context = useContext(PaymentContext);
+  if (context === undefined) {
+    throw new Error("usePayment must be used within a PaymentProvider");
   }
-  return context
-}
+  return context;
+};

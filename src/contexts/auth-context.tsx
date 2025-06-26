@@ -74,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userName: data.data.userName,
           phoneNumber: data.data.phoneNumber,
           address: data.data.address,
+          premiumPackageId: data.data.premiumPackageId,
+          status: data.data.status,
           role: data.data.role,
           dateOfBirth: data.data.dateOfBirth,
           imageUser: data.data.imageUser, // Adjusted to match API response
