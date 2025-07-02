@@ -1,3 +1,4 @@
+// payment-detail-modal.tsx
 "use client";
 
 import {
@@ -16,16 +17,26 @@ const mapStatusNumberToString = (statusNumber: number): string => {
     switch (statusNumber) {
       case 0: return "Pending";
       case 1: return "Completed";
-      case 2: return "Processing";
-      case 3: return "Failed";
+      case 2: return "Failed";
+      case 3: return "Cancelled";
       default: return "Unknown";
     }
 };
 
-// Hàm định dạng ngày giờ
+// ĐÃ CẬP NHẬT: Hàm định dạng ngày giờ - loại bỏ timeZone vì backend đã chuẩn hóa
 const formatDateTime = (dateString: string | null) => {
     if (!dateString || dateString.startsWith("0001-")) return "N/A";
-    return new Date(dateString).toLocaleString('vi-VN');
+    // Backend đã cung cấp thời gian đúng múi giờ VN, chỉ cần định dạng hiển thị.
+    // Loại bỏ logic thêm 'Z' và 'timeZone' trong toLocaleString.
+    return new Date(dateString).toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false // Sử dụng định dạng 24h
+    });
 };
 
 interface PaymentDetailModalProps {
@@ -100,11 +111,6 @@ export function PaymentDetailModal({ payment, isOpen, onClose }: PaymentDetailMo
              </dl>
           </div>
         </div>
-        
-        {/* XÓA BỎ: Nút đóng 'X' thừa đã được loại bỏ. 
-            <DialogContent> đã có sẵn một nút đóng mặc định. 
-        */}
-
       </DialogContent>
     </Dialog>
   )

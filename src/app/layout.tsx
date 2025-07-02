@@ -8,6 +8,7 @@ import { UserProvider } from "@/contexts/user-context"
 import { ProductProvider } from "@/contexts/product-context"
 import { PaymentProvider } from "@/contexts/payment-context"
 import { OrderProvider } from "@/contexts/order-context"
+import { LogProvider } from "@/contexts/log-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,7 +31,9 @@ export default function RootLayout({
               <PaymentProvider>
               <ProductProvider>
                 <OrderProvider>
+                  <LogProvider>
               {children}
+              </LogProvider>
               </OrderProvider>
               </ProductProvider>
               </PaymentProvider>

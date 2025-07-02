@@ -1,6 +1,7 @@
+// orders-management.tsx
 "use client"
 
-import { useOrder } from "@/contexts/order-context" // SỬA: Import hook mới
+import { useOrder } from "@/contexts/order-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -12,10 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
 export function OrdersManagement() {
-  // SỬA: Lấy dữ liệu từ context, không cần state và useEffect cục bộ nữa
   const { orders, isLoading, error } = useOrder();
-
-  // XÓA BỎ: useState và useEffect để fetch dữ liệu ở đây
 
   if (isLoading) {
     return (
@@ -25,6 +23,11 @@ export function OrdersManagement() {
     );
   }
 
+  // SẮP XẾP ĐƠN HÀNG THEO NGÀY TẠO (MỚI NHẤT ĐẾN CŨ NHẤT)
+  const sortedOrders = [...orders].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -32,7 +35,6 @@ export function OrdersManagement() {
         <CardDescription>Monitor and manage customer clothing orders</CardDescription>
       </CardHeader>
       <CardContent>
-        {/* THÊM: Hiển thị lỗi nếu có */}
         {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
@@ -54,8 +56,8 @@ export function OrdersManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.length > 0 ? (
-                orders.map((order) => {
+            {sortedOrders.length > 0 ? ( // SỬ DỤNG sortedOrders ở đây
+                sortedOrders.map((order) => {
                     const statusInfo = mapOrderStatus(order.status);
                     const totalProducts = order.items.reduce((sum, item) => sum + item.quantity, 0);
 

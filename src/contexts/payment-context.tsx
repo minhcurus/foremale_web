@@ -11,6 +11,7 @@ interface PaymentContextType {
   fetchPayments: () => void;
   confirmPremiumPayment: (orderCode: number) => Promise<boolean>;
   checkLivePaymentStatus: (orderCode: number) => Promise<string | null>;
+  cancelPayment: (orderCode: number, cancellationReason: string) => Promise<boolean>; // THÊM: Hàm cancelPayment
 }
 
 const PaymentContext = createContext<PaymentContextType | undefined>(undefined);
@@ -74,6 +75,38 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
     // Nếu authLoading là true, chúng ta chỉ cần đợi.
   }, [authLoading, user, fetchPayments]); // Dependencies để trigger lại khi auth thay đổi
 
+  const cancelPayment = useCallback(async (orderCode: number, cancellationReason: string): Promise<boolean> => {
+    const token = getToken();
+    if (!token) {
+      setError("Authorization token not available.");
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/Payment/cancel`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderCode, cancellationReason }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to cancel payment: ${response.status} ${response.statusText}`);
+      }
+
+      // Refresh payments after successful cancellation
+      await fetchPayments();
+      return true;
+    } catch (err: any) {
+      setError(err.message || "Failed to cancel payment.");
+      console.error("Cancel Payment Error:", err);
+      return false;
+    }
+  }, [getToken, fetchPayments]);
+
   const confirmPremiumPayment = async (orderCode: number): Promise<boolean> => {
     try {
       const token = getToken();
@@ -134,7 +167,7 @@ export const PaymentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <PaymentContext.Provider value={{ payments, isLoading, error, fetchPayments, confirmPremiumPayment, checkLivePaymentStatus }}>
+    <PaymentContext.Provider value={{ payments, isLoading, error, fetchPayments, confirmPremiumPayment, checkLivePaymentStatus, cancelPayment }}>
       {children}
     </PaymentContext.Provider>
   );

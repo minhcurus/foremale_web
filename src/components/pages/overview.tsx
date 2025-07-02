@@ -1,3 +1,4 @@
+// overview.tsx
 "use client";
 
 import { useMemo } from "react";
@@ -5,20 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProduct } from "@/contexts/product-context";
 import { usePayment } from "@/contexts/payment-context";
 import { useUser } from "@/contexts/user-context";
-import { useOrder } from "@/contexts/order-context"; // BƯỚC 1: Thêm OrderContext
-import { VictoryBar, VictoryChart, VictoryAxis, VictoryTheme } from "victory";
-import { Users, Package, ShoppingCart, DollarSign, Loader2 } from "lucide-react";
+import { useOrder } from "@/contexts/order-context";
+import { useLog } from "@/contexts/log-context";
+import { VictoryBar, VictoryChart, VictoryAxis, VictoryTheme, VictoryLine, VictoryVoronoiContainer, VictoryLabel } from "victory";
+import { Users, Package, ShoppingCart, DollarSign, Loader2, BarChart2 } from "lucide-react";
 
 export function Overview() {
   const { products, loading: productLoading } = useProduct();
   const { payments, isLoading: paymentLoading } = usePayment();
   const { users, loading: userLoading } = useUser();
   const { orders, isLoading: orderLoading } = useOrder();
+  const { todayVisits, dailyVisits, isLoading: logLoading, error: logError } = useLog();
 
-  // Hợp nhất các trạng thái loading
-  const isLoading = productLoading || paymentLoading || userLoading || orderLoading;
+  const isLoading = productLoading || paymentLoading || userLoading || orderLoading || logLoading;
 
-  // BƯỚC 2: Xử lý dữ liệu cho Biểu đồ Người dùng (User Chart)
   const userAgeData = useMemo(() => {
     const ageGroups = [
       { label: "<20", min: 0, max: 19 },
@@ -30,7 +31,7 @@ export function Overview() {
 
     const calculateAge = (dob: string): number => {
       const birthDate = new Date(dob);
-      const today = new Date("2025-06-26T13:05:27"); // Sử dụng ngày giờ hiện tại được cung cấp
+      const today = new Date(); 
       let age = today.getFullYear() - birthDate.getFullYear();
       const m = today.getMonth() - birthDate.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
@@ -53,18 +54,14 @@ export function Overview() {
     }));
   }, [users]);
 
-  // BƯỚC 3: Xử lý dữ liệu cho Biểu đồ Doanh thu (Revenue Chart)
   const revenueData = useMemo(() => {
-    // Chỉ tính các giao dịch đã hoàn thành (status === 1)
     const completedPayments = payments.filter(p => p.status === 1);
 
     const revenueByCategory = completedPayments.reduce(
       (acc, payment) => {
         if (payment.premiumPackageId !== null) {
-          // Doanh thu từ mua gói
           acc.premium += payment.amount;
         } else {
-          // Doanh thu từ mua hàng
           acc.order += payment.amount;
         }
         return acc;
@@ -77,6 +74,13 @@ export function Overview() {
       { type: "Orders", revenue: revenueByCategory.order },
     ];
   }, [payments]);
+
+  const dailyVisitsChartData = useMemo(() => {
+    return dailyVisits.map(visit => ({
+      date: new Date(visit.date).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }),
+      visits: visit.visitCount,
+    }));
+  }, [dailyVisits]);
 
   const totalRevenue = revenueData.reduce((sum, item) => sum + item.revenue, 0);
 
@@ -103,12 +107,12 @@ export function Overview() {
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Today's Visits</CardTitle>
+          <BarChart2 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{users.length}</div>
-          <p className="text-xs text-muted-foreground">Tổng số người dùng trong hệ thống</p>
+          <div className="text-2xl font-bold">{todayVisits?.totalVisits ?? 0}</div>
+          <p className="text-xs text-muted-foreground">Lượt truy cập hôm nay</p>
         </CardContent>
       </Card>
       <Card>
@@ -176,6 +180,53 @@ export function Overview() {
               barWidth={50}
             />
           </VictoryChart>
+        </CardContent>
+      </Card>
+
+      {/* THAY ĐỔI: Biểu đồ lượt truy cập hàng ngày có cùng chiều ngang */}
+      <Card className="md:col-span-2"> {/* THAY ĐỔI TẠI ĐÂY: từ md:col-span-4 thành md:col-span-2 */}
+        <CardHeader>
+          <CardTitle>Daily Website Visits</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {dailyVisitsChartData.length > 0 ? (
+            <VictoryChart 
+                theme={VictoryTheme.material} 
+                height={250} // TRẢ LẠI CHIỀU CAO BAN ĐẦU HOẶC TƯƠNG ĐƯƠNG
+                padding={{ top: 20, bottom: 60, left: 50, right: 20 }} // TRẢ LẠI PADDING BAN ĐẦU HOẶC TƯƠNG ĐƯƠNG
+                containerComponent={<VictoryVoronoiContainer />}
+            >
+              <VictoryAxis
+                tickValues={dailyVisitsChartData.map(d => d.date)}
+                tickFormat={(x) => x}
+                style={{
+                  tickLabels: { 
+                    fontSize: 10, // TRẢ LẠI KÍCH THƯỚC FONT
+                    angle: -45, 
+                    textAnchor: "end"
+                  } 
+                }}
+              />
+              <VictoryAxis dependentAxis tickFormat={(y) => (`${y}`)} />
+              <VictoryLine
+                data={dailyVisitsChartData}
+                x="date"
+                y="visits"
+                style={{ data: { stroke: "#ffc107" } }}
+                labels={({ datum }) => `${datum.visits}`}
+                labelComponent={<VictoryLabel renderInPortal dy={-10} style={{ fontSize: 8 }} />} // TRẢ LẠI KÍCH THƯỚC FONT NHÃN
+              />
+            </VictoryChart>
+          ) : (
+            <div className="text-center text-muted-foreground h-[250px] flex items-center justify-center"> {/* TRẢ LẠI CHIỀU CAO div */}
+              No daily visit data available.
+            </div>
+          )}
+           {logError && (
+            <div className="text-red-500 text-sm mt-2 text-center">
+                Error fetching log data: {logError}
+            </div>
+           )}
         </CardContent>
       </Card>
     </div>

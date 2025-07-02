@@ -74,5 +74,15 @@ export interface Order {
   items: OrderItem[];
 }
 
+export interface TodayVisit {
+  date: string;
+  totalVisits: number;
+}
+
+export interface DailyVisit {
+  date: string;
+  visitCount: number;
+}
+
 
 export type TabType = "overview" | "users" | "products" | "payments" | "orders" | "settings"
