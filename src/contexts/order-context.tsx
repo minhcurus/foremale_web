@@ -9,6 +9,7 @@ interface OrderContextType {
   isLoading: boolean;
   error: string | null;
   fetchOrders: () => Promise<void>;
+  fetchOrderDetails: (orderId: number) => Promise<Order | null>; // THÊM: Hàm fetchOrderDetails
   // Trong tương lai, bạn có thể thêm các hàm khác ở đây
   // Ví dụ: updateOrderStatus: (orderId: number, status: number) => Promise<boolean>;
 }
@@ -57,6 +58,37 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }, [getToken]);
 
+  const fetchOrderDetails = useCallback(async (orderId: number): Promise<Order | null> => {
+    const token = getToken();
+    if (!token) {
+      setError("Authorization token not available.");
+      return null;
+    }
+
+    setError(null); // Xóa lỗi trước khi fetch chi tiết
+    try {
+      const response = await fetch(`/api/Order/orderId?orderId=${orderId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to fetch order details: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result.data as Order; // API trả về { success, message, data: Order }
+    } catch (err: any) {
+      setError(err.message || `Failed to fetch details for order ${orderId}.`);
+      console.error(`Error fetching order ${orderId} details:`, err);
+      return null;
+    }
+  }, [getToken]);
+
   // Đồng bộ với AuthContext để chỉ fetch khi đã đăng nhập
   useEffect(() => {
     if (!authLoading && user) {
@@ -69,7 +101,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [authLoading, user, fetchOrders]);
 
   return (
-    <OrderContext.Provider value={{ orders, isLoading, error, fetchOrders }}>
+    <OrderContext.Provider value={{ orders, isLoading, error, fetchOrders, fetchOrderDetails }}>
       {children}
     </OrderContext.Provider>
   );
