@@ -12,6 +12,7 @@ import { OrdersManagement } from "@/components/pages/orders-management"
 import { Settings } from "@/components/pages/settings"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useSearchParams } from "next/navigation"
+import { FeedbacksManagement } from "@/components/pages/feedbacks-management"
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams()
@@ -28,7 +29,7 @@ export default function AdminDashboard() {
 
   // Validate tab to ensure it's a valid TabType
   const isValidTab = (tab: string): tab is TabType => {
-    return ["overview", "users", "products", "payments", "orders", "settings"].includes(tab)
+    return ["overview", "users", "products", "payments", "orders","feedbacks", "settings"].includes(tab)
   }
 
   const renderContent = () => {
@@ -43,6 +44,8 @@ export default function AdminDashboard() {
         return <PaymentsOversight />
       case "orders":
         return <OrdersManagement />
+      case "feedbacks":
+        return <FeedbacksManagement />
       case "settings":
         return <Settings />
       default:

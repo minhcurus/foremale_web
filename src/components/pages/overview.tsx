@@ -9,7 +9,8 @@ import { useUser } from "@/contexts/user-context";
 import { useOrder } from "@/contexts/order-context";
 import { useLog } from "@/contexts/log-context";
 import { VictoryBar, VictoryChart, VictoryAxis, VictoryTheme, VictoryLine, VictoryVoronoiContainer, VictoryLabel } from "victory";
-import { Users, Package, ShoppingCart, DollarSign, Loader2, BarChart2 } from "lucide-react";
+import { Users, Package, ShoppingCart, DollarSign, Loader2, BarChart2, MessageSquare } from "lucide-react";
+import { useFeedback } from "@/contexts/feedback-context";
 
 export function Overview() {
   const { products, loading: productLoading } = useProduct();
@@ -17,8 +18,9 @@ export function Overview() {
   const { users, loading: userLoading } = useUser();
   const { orders, isLoading: orderLoading } = useOrder();
   const { todayVisits, dailyVisits, isLoading: logLoading, error: logError } = useLog();
+    const { feedbacks, loading: feedbackLoading } = useFeedback();
 
-  const isLoading = productLoading || paymentLoading || userLoading || orderLoading || logLoading;
+  const isLoading = productLoading || paymentLoading || userLoading || orderLoading || logLoading || feedbackLoading;
 
   const userAgeData = useMemo(() => {
     const ageGroups = [
@@ -180,6 +182,16 @@ export function Overview() {
               barWidth={50}
             />
           </VictoryChart>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Feedbacks</CardTitle>
+          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{feedbacks.length}</div>
+          <p className="text-xs text-muted-foreground">Tổng số đánh giá từ người dùng</p>
         </CardContent>
       </Card>
 
