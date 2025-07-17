@@ -85,4 +85,4 @@ export interface DailyVisit {
 }
 
 
-export type TabType = "overview" | "users" | "products" | "payments" | "orders" | "settings"
+export type TabType = "overview" | "users" | "products" | "payments" | "orders" | "feedbacks" | "settings"

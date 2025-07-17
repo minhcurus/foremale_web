@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import type { TabType } from "@/types"
-import { Home, CreditCard, Package, ShoppingCart, Users, Settings } from "lucide-react"
+import { Home, CreditCard, Package, ShoppingCart, Users, Settings, MailIcon } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 
@@ -26,7 +26,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
 
   // Validate tab to ensure it's a valid TabType
   const isValidTab = (tab: string): tab is TabType => {
-    return ["overview", "users", "products", "payments", "orders", "settings"].includes(tab)
+    return ["overview", "users", "products", "payments", "orders","feedbacks", "settings"].includes(tab)
   }
 
   // Handle tab click and update URL with query parameter
@@ -42,6 +42,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen }: SidebarProps) {
     { id: "users" as TabType, label: "Users", icon: Users },
     { id: "products" as TabType, label: "Products", icon: Package },
     { id: "payments" as TabType, label: "Payments", icon: CreditCard },
+    { id: "feedbacks" as TabType, label: "Feedbacks", icon: MailIcon},
     { id: "orders" as TabType, label: "Orders", icon: ShoppingCart },
     { id: "settings" as TabType, label: "Settings", icon: Settings },
   ]
